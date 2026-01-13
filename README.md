@@ -70,7 +70,7 @@ CLARITAS/
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.x.x
 - pip (Python package manager)
 - Virtual environment tool
 
@@ -164,6 +164,7 @@ Hak Milik: Tembok Ratapan Solo
 ## 📧 Contact & Support
 
 Untuk pertanyaan atau dukungan teknis, silakan buat issue di repository ini atau hubungi tim development.
+
 
 
 
