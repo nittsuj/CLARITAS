@@ -2,18 +2,14 @@
 
 **Cognitive Linguistic Audio Recognition and Identification Technology for Alzheimer Support**
 
-Claritas: Sistem Analisis Akustik dan Leksikal Ucapan Berbasis Web untuk Deteksi Dini Perubahan Kognitif pada Pasien Alzheimer
-
-solusi digital untuk mendukung pemantauan kognitif pasien Alzheimer berbasis analisis suara.
-
 <img src="img/Logo-Claritas.png">
 
 ## 📋 Table of Contents
 - [Project Overview](#project-overview)
 - [Project Structure](#project-structure)
 - [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
 - [Use Case Diagram](#use-case-diagram)
+- [Getting Started](#getting-started)
 - [AI Model Usage](#ai-model-usage)
 - [API Response Format](#api-response-format)
 - [Team](#team)
@@ -24,10 +20,67 @@ solusi digital untuk mendukung pemantauan kognitif pasien Alzheimer berbasis ana
 CLARITAS adalah platform berbasis web yang memanfaatkan teknologi AI untuk mendeteksi dini perubahan kognitif pada pasien Alzheimer melalui analisis mendalam terhadap pola bicara, termasuk aspek akustik dan leksikal. Sistem ini dirancang untuk membantu tenaga medis dalam pemantauan kognitif pasien secara berkelanjutan.
 
 ## 📁 Project Structure
+CLARITAS/
+├── ai/                  # AI models & pipeline
+│   ├── __init__.py
+│   ├── config.py
+│   ├── example_usage.py
+│   ├── features.py
+│   ├── requirements.txt
+│   ├── model.py
+│   ├── __pychache__/
+│   └── models/
+│       ├── catboost_final.pkl
+│       ├── cnn_lstm_final.pt
+│       ├── ensemble_weights.pkl
+│       ├── feature_scaler.pkl
+│       ├── lightgbm_final.pkl
+│       ├── random_forest_final.pkl
+│       ├── random_forest_full.pkl
+│       └── xgboost_full.pkl
+│
+├── img/                 # Logo & UCD
+│   ├── Logo-Claritas.png
+│   └── UCD-Claritas.png
+│
+├── .gitignore
+├── LICENSE
+├── README.md
+├── app.py               # Flask backend entrypoint
+├── index.html           # Frontend main page
+├── scripts.js           # Frontend logic
+└── styles.css           # Frontend styling
 
+
+## 🛠️ Tech Stack
+
+- **Backend**: PHP (Laravel) / Python (Flask)
+- **Frontend**: HTML, CSS, JavaScript
+- **AI/ML**: Python, TensorFlow/Scikit-learn
+- **Database**: MySQL
+- **Audio Processing**: librosa
+- **Version Control**: Git, GitHub
+- **Model**: Whisper OpenAI
 
 ## 💼 Use Case Diagram
 <img src="img/UCD-Claritas.png">
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Python 3.8 or higher
+- pip (Python package manager)
+- Virtual environment tool
+
+### Environment Setup
+
+#### 1. Clone Repository
+
+```bash
+git clone https://github.com/nittsuj/CLARITAS.git
+cd CLARITAS
+```
 
 # AI
 cara memakai
@@ -102,4 +155,5 @@ cara memakai
 | **Tavasya** | UI/UX |
 
 ----Hak Milik: tembok ratapan solo----
+
 
