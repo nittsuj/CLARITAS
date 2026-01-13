@@ -20,15 +20,17 @@
 CLARITAS adalah platform berbasis web yang memanfaatkan teknologi AI untuk mendeteksi dini perubahan kognitif pada pasien Alzheimer melalui analisis mendalam terhadap pola bicara, termasuk aspek akustik dan leksikal. Sistem ini dirancang untuk membantu tenaga medis dalam pemantauan kognitif pasien secara berkelanjutan.
 
 ## 📁 Project Structure
+
+```
 CLARITAS/
-├── ai/                  # AI models & pipeline
+├── ai/                      # AI models & pipeline
 │   ├── __init__.py
 │   ├── config.py
 │   ├── example_usage.py
 │   ├── features.py
 │   ├── requirements.txt
 │   ├── model.py
-│   ├── __pychache__/
+│   ├── __pycache__/
 │   └── models/
 │       ├── catboost_final.pkl
 │       ├── cnn_lstm_final.pt
@@ -39,17 +41,18 @@ CLARITAS/
 │       ├── random_forest_full.pkl
 │       └── xgboost_full.pkl
 │
-├── img/                 # Logo & UCD
+├── img/                     # Logo & UCD
 │   ├── Logo-Claritas.png
 │   └── UCD-Claritas.png
 │
 ├── .gitignore
 ├── LICENSE
 ├── README.md
-├── app.py               # Flask backend entrypoint
-├── index.html           # Frontend main page
-├── scripts.js           # Frontend logic
-└── styles.css           # Frontend styling
+├── app.py                   # Flask backend entrypoint
+├── index.html               # Frontend main page
+├── scripts.js               # Frontend logic
+└── styles.css               # Frontend styling
+```
 
 
 ## 🛠️ Tech Stack
@@ -155,5 +158,6 @@ cara memakai
 | **Tavasya** | UI/UX |
 
 ----Hak Milik: tembok ratapan solo----
+
 
 
