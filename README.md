@@ -10,8 +10,6 @@
 - [Tech Stack](#tech-stack)
 - [Use Case Diagram](#use-case-diagram)
 - [Getting Started](#getting-started)
-- [AI Model Usage](#ai-model-usage)
-- [API Response Format](#api-response-format)
 - [Team](#team)
 - [Features](#features)
 - [License](#license)
@@ -157,7 +155,15 @@ cara memakai
 | **Daffa** | AI Model |
 | **Tavasya** | UI/UX |
 
-----Hak Milik: tembok ratapan solo----
+
+## 🔒 License
+
+Hak Milik: Tembok Ratapan Solo
+
+
+## 📧 Contact & Support
+
+Untuk pertanyaan atau dukungan teknis, silakan buat issue di repository ini atau hubungi tim development.
 
 
 
