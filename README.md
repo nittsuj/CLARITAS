@@ -10,12 +10,14 @@
 - [Tech Stack](#tech-stack)
 - [Use Case Diagram](#use-case-diagram)
 - [Getting Started](#getting-started)
+- [How It Works](#how-it-works)
 - [Team](#team)
 - [Features](#features)
 - [License](#license)
 
 ## 📌 Project Overview
-CLARITAS adalah platform berbasis web yang memanfaatkan teknologi AI untuk mendeteksi dini perubahan kognitif pada pasien Alzheimer melalui analisis mendalam terhadap pola bicara, termasuk aspek akustik dan leksikal. Sistem ini dirancang untuk membantu tenaga medis dalam pemantauan kognitif pasien secara berkelanjutan.
+CLARITAS adalah platform berbasis web yang memanfaatkan teknologi AI untuk mendeteksi dini perubahan kognitif pada pasien Alzheimer melalui analisis mendalam terhadap pola bicara, termasuk aspek akustik dan leksikal. Sistem ini dirancang untuk membantu tenaga medis dalam pemantauan kognitif pasien secara berkelanjutan. Untuk memperoleh pemahaman yang lebih mendalam mengenai sistem CLARITAS, silakan **[klik di sini](https://shzirley.github.io/introduction-claritas/)**.
+
 
 ## 📁 Project Structure
 
@@ -145,6 +147,15 @@ cara memakai
     ```
 
     NOTE : Model membutuh kan sebuah Audio dan Text
+ 
+
+## ⚙️ How It Works
+1. Pasien melakukan sesi bicara (picture description / reading sentence)
+2. Audio diproses dan ditranskripsi
+3. Fitur akustik dan leksikal diekstraksi
+4. Model AI menghasilkan skor dan Risk Level
+5. Hasil ditampilkan sebagai insight bagi caregiver dan tenaga kesehatan
+
 
 ## 👥 Team
 | Nama | Peran |
