@@ -10,7 +10,6 @@
 - [Tech Stack](#tech-stack)
 - [Use Case Diagram](#use-case-diagram)
 - [Getting Started](#getting-started)
-- [How It Works](#how-it-works)
 - [Team](#team)
 - [Features](#features)
 - [License](#license)
