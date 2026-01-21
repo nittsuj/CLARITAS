@@ -147,15 +147,6 @@ cara memakai
 
     NOTE : Model membutuh kan sebuah Audio dan Text
  
-
-## ⚙️ How It Works
-1. Pasien melakukan sesi bicara (picture description / reading sentence)
-2. Audio diproses dan ditranskripsi
-3. Fitur akustik dan leksikal diekstraksi
-4. Model AI menghasilkan skor dan Risk Level
-5. Hasil ditampilkan sebagai insight bagi caregiver dan tenaga kesehatan
-
-
 ## 👥 Team
 | Nama | Peran |
 |------|-------|
