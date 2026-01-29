@@ -1,0 +1,35 @@
+{
+  "status": "success",
+  "data": {
+    "prediction": {
+      "class": "MCI",
+      "label": "Mild Cognitive Impairment",
+      "confidence": 0.6610009711053282,
+      "probabilities": {
+        "HC": 0.10536239734379299,
+        "MCI": 0.6610009711053282,
+        "AD": 0.23363662074753702
+      }
+    },
+    "scores": {
+      "speech_fluency": 70.02762430939227,
+      "lexical_coherence": 70.0
+    },
+    "risk_assessment": {
+      "level": "high",
+      "description": "Significant cognitive impairment detected"
+    },
+    "features": {
+      "acoustic": {
+        "pause_ratio": 0.16574585635359115,
+        "voice_ratio": 0.8342541436464088
+      },
+      "lexical": {
+        "ttr": 1.0,
+        "lexical_density": 0.0,
+        "speech_rate": 41.43646408839779,
+        "repetition_ratio": 0
+      }
+    }
+  }
+}
