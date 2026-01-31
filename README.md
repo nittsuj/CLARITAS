@@ -165,8 +165,3 @@ Hak Milik: Tembok Ratapan Solo
 ## 📧 Contact & Support
 
 Untuk pertanyaan atau dukungan teknis, silakan buat issue di repository ini atau hubungi tim development.
-
-
-
-
->>>>>>> origin/main
