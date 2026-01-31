@@ -84,57 +84,67 @@ const Navbar: React.FC = () => {
         <img src={logoImage} alt="Claritas" style={{ height: '56px' }} />
       </Link>
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-        <a href="#fitur" style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>
-          Fitur
-        </a>
-        <a href="#tentang" style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>
-          Tentang
-        </a>
-
         {user ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <img
-              src={user.picture}
-              alt={user.name}
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                border: '2px solid #2563eb',
-              }}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
-              <span style={{ color: '#374151', fontWeight: 600, fontSize: '0.875rem' }}>
-                Caregiver: {user.name}
-              </span>
+          <>
+            {/* Center Navigation for Logged In Users */}
+            <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', marginRight: '2rem' }}>
+              <Link to="/dashboard" style={{ color: '#6b7280', fontWeight: 500, textDecoration: 'none' }}>Dashboard</Link>
+              <Link to="/cogniview" style={{ color: '#6b7280', fontWeight: 500, textDecoration: 'none' }}>CogniView</Link>
+              <Link to="/careview" style={{ color: '#6b7280', fontWeight: 500, textDecoration: 'none' }}>CareView</Link>
             </div>
-            <button
-              onClick={handleLogout}
-              style={{
-                backgroundColor: '#ef4444',
-                color: '#ffffff',
-                padding: '0.5rem 1rem',
-                borderRadius: '0.375rem',
-                border: 'none',
-                fontWeight: 600,
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-              }}
-            >
-              Logout
-            </button>
-          </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <img
+                src={user.picture}
+                alt={user.name}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  border: '2px solid #2563eb',
+                }}
+              />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                <span style={{ color: '#374151', fontWeight: 600, fontSize: '0.875rem' }}>
+                  {user.name}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                style={{
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '0.375rem',
+                  border: 'none',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Logout
+              </button>
+            </div>
+          </>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              onError={handleGoogleError}
-              text="signin_with"
-              shape="rectangular"
-              theme="outline"
-              size="medium"
-            />
-          </div>
+          <>
+            <a href="#fitur" style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>
+              Fitur
+            </a>
+            <a href="#tentang" style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>
+              Tentang
+            </a>
+            <div style={{ display: 'flex', alignItems: 'center', marginLeft: '1rem' }}>
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                text="signin_with"
+                shape="rectangular"
+                theme="outline"
+                size="medium"
+              />
+            </div>
+          </>
         )}
       </div>
     </nav>

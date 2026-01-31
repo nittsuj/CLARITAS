@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MdTrendingUp, MdTrendingDown, MdRemove, MdDownload } from 'react-icons/md';
 import AuthenticatedNav from '../components/AuthenticatedNav';
 import ClinicalReportPreview from '../components/ClinicalReportPreview';
+import TrendChart from '../components/TrendChart';
 import {
     getSessions,
     calculateOverallScore,
@@ -277,28 +278,41 @@ const CareView: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Trend Chart Placeholder */}
+                {/* Trend Chart */}
                 <div style={{
                     backgroundColor: '#ffffff',
                     borderRadius: '0.75rem',
                     padding: '1.5rem',
                     border: '1px solid #e5e7eb',
                     marginBottom: '2rem',
+                    height: '400px',
+                    display: 'flex',
+                    flexDirection: 'column'
                 }}>
                     <h2 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#111827', marginBottom: '1rem' }}>
-                        Trend
+                        Trend Perkembangan Kognitif (Overall Score)
                     </h2>
-                    <div style={{
-                        height: '300px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#6b7280',
-                        backgroundColor: '#f9fafb',
-                        borderRadius: '0.5rem',
-                    }}>
-                        Chart will be rendered here (using Chart.js)
-                    </div>
+                    {sessions.length > 0 ? (
+                        <div style={{ flex: 1, position: 'relative' }}>
+                            <TrendChart
+                                dates={trendData.map(d => d.date)}
+                                scores={trendData.map(d => d.overall)}
+                                label="Overall Score"
+                            />
+                        </div>
+                    ) : (
+                        <div style={{
+                            flex: 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#6b7280',
+                            backgroundColor: '#f9fafb',
+                            borderRadius: '0.5rem',
+                        }}>
+                            Belum ada data visualisasi
+                        </div>
+                    )}
                 </div>
 
                 {/* Session History Table */}

@@ -1,83 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { MdTrendingDown, MdTrendingUp, MdCalendarToday, MdPerson, MdEmojiEvents, MdWarning } from 'react-icons/md';
+import { MdTrendingDown, MdTrendingUp, MdCalendarToday, MdPerson, MdEmojiEvents, MdWarning, MdRemove } from 'react-icons/md';
 import AuthenticatedNav from '../components/AuthenticatedNav';
-
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
-
-interface Session {
-  date: string;
-  type: string;
-  speech_fluency: number;
-  lexical: number;
-  coherence: number;
-  risk: string;
-  note: string;
-}
+import TrendChart from '../components/TrendChart';
+import {
+  getSessions,
+  calculateOverallScore,
+  getLatestScores,
+  getTrendData,
+  getScoreTrend,
+  type SessionResult
+} from '../utils/sessions';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [userName, setUserName] = useState<string>('');
-
-  // Dummy sessions data
-  const [sessions] = useState<Session[]>([
-    {
-      date: '2026-01-08',
-      type: 'Deskripsi gambar',
-      speech_fluency: 62,
-      lexical: 58,
-      coherence: 60,
-      risk: 'Sedang',
-      note: '-',
-    },
-    {
-      date: '2025-12-27',
-      type: 'Membaca kalimat',
-      speech_fluency: 65,
-      lexical: 60,
-      coherence: 62,
-      risk: 'Sedang',
-      note: 'Pasien tampak lebih lelah',
-    },
-    {
-      date: '2025-12-13',
-      type: 'Deskripsi gambar',
-      speech_fluency: 68,
-      lexical: 63,
-      coherence: 65,
-      risk: 'Rendah',
-      note: '-',
-    },
-    {
-      date: '2025-11-29',
-      type: 'Membaca kalimat',
-      speech_fluency: 70,
-      lexical: 65,
-      coherence: 68,
-      risk: 'Rendah',
-      note: 'Sesi berlangsung lancar',
-    },
-    {
-      date: '2025-11-15',
-      type: 'Deskripsi gambar',
-      speech_fluency: 72,
-      lexical: 68,
-      coherence: 70,
-      risk: 'Rendah',
-      note: '-',
-    },
-  ]);
+  const [sessions, setSessions] = useState<SessionResult[]>([]);
 
   useEffect(() => {
     const currentUser = localStorage.getItem('claritas_current_user');
@@ -87,98 +25,57 @@ const Dashboard: React.FC = () => {
       const parsed = JSON.parse(currentUser);
       setUserName(parsed.name || parsed.email);
     }
+
+    // Load sessions from localStorage
+    setSessions(getSessions());
   }, [navigate]);
 
   // Compute metrics
-  const latest = sessions[0];
-  const overall = Math.round((latest.speech_fluency + latest.lexical + latest.coherence) / 3);
-  const trend = sessions[0].speech_fluency < sessions[1].speech_fluency ? 'Menurun' : 'Meningkat';
-  const trendColor = trend === 'Menurun' ? '#ef4444' : '#10b981';
+  const overall = calculateOverallScore(sessions);
+  const latestScores = getLatestScores(sessions);
+  const trendData = getTrendData(sessions);
 
-  // Chart data
-  const dates = sessions.map((s) => s.date);
-  const speechData = sessions.map((s) => s.speech_fluency);
-  const lexicalData = sessions.map((s) => s.lexical);
-  const coherenceData = sessions.map((s) => s.coherence);
+  // Calculate trend direction based on overall score of last 2 sessions
+  let trend: 'Meningkat' | 'Menurun' | 'Stabil' = 'Stabil';
+  if (sessions.length >= 2) {
+    const last = sessions[sessions.length - 1];
+    const prev = sessions[sessions.length - 2];
 
-  const chartData = {
-    labels: dates.reverse(),
-    datasets: [
-      {
-        label: 'Speech Fluency',
-        data: [...speechData].reverse(),
-        borderColor: '#2563eb',
-        backgroundColor: 'rgba(37, 99, 235, 0.1)',
-        tension: 0.3,
-      },
-      {
-        label: 'Lexical',
-        data: [...lexicalData].reverse(),
-        borderColor: '#06b6d4',
-        backgroundColor: 'rgba(6, 182, 212, 0.1)',
-        tension: 0.3,
-      },
-      {
-        label: 'Coherence',
-        data: [...coherenceData].reverse(),
-        borderColor: '#10b981',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        tension: 0.3,
-      },
-    ],
-  };
+    const lastAvg = (last.scores.speech_fluency + last.scores.lexical_score + last.scores.coherence_score) / 3;
+    const prevAvg = (prev.scores.speech_fluency + prev.scores.lexical_score + prev.scores.coherence_score) / 3;
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-        position: 'bottom' as const,
-        labels: {
-          boxWidth: 12,
-          padding: 15,
-        },
-      },
-      title: {
-        display: false,
-      },
-    },
-    scales: {
-      y: {
-        min: 40,
-        max: 100,
-        grid: {
-          color: '#f3f4f6',
-        },
-        ticks: {
-          color: '#6b7280',
-        },
-      },
-      x: {
-        ticks: {
-          color: '#6b7280',
-        },
-        grid: {
-          display: false,
-        },
-      },
-    },
-  };
+    if (lastAvg > prevAvg + 1) trend = 'Meningkat';
+    else if (lastAvg < prevAvg - 1) trend = 'Menurun';
+  }
+
+  const trendColor = trend === 'Menurun' ? '#ef4444' : (trend === 'Meningkat' ? '#10b981' : '#6b7280');
+  const TrendIcon = trend === 'Menurun' ? MdTrendingDown : (trend === 'Meningkat' ? MdTrendingUp : MdRemove);
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
       case 'Rendah':
+      case 'Baik':
         return { bg: '#dcfce7', text: '#166534' };
       case 'Sedang':
         return { bg: '#fed7aa', text: '#9a3412' };
       case 'Tinggi':
+      case 'Buruk':
         return { bg: '#fee2e2', text: '#991b1b' };
       default:
         return { bg: '#f3f4f6', text: '#374151' };
     }
   };
 
-  const riskColors = getRiskColor(latest.risk);
+  const latestSession = sessions.length > 0 ? sessions[sessions.length - 1] : null;
+  const riskColors = latestSession ? getRiskColor(latestSession.risk_band) : { bg: '#f3f4f6', text: '#374151' };
+
+  // Helper for metric trend
+  const MetricTrendIcon = ({ metric }: { metric: 'speech_fluency' | 'lexical_score' | 'coherence_score' }) => {
+    const t = getScoreTrend(sessions, metric);
+    if (t === 'up') return <MdTrendingUp color="#10b981" size={24} />;
+    if (t === 'down') return <MdTrendingDown color="#ef4444" size={24} />;
+    return <MdRemove color="#6b7280" size={24} />;
+  };
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -197,9 +94,9 @@ const Dashboard: React.FC = () => {
             }}
           >
             <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#1f2937', fontWeight: 700 }}>
-              Halo, Budi Santoso
+              Halo, {userName}
             </h2>
-            <p style={{ margin: '0.25rem 0 0 0', color: '#6b7280', fontSize: '0.9rem' }}>Usia: 68 tahun</p>
+            <p style={{ margin: '0.25rem 0 0 0', color: '#6b7280', fontSize: '0.9rem' }}>Pasien: Budi Santoso (68 th)</p>
           </div>
 
           {/* Score and Risk */}
@@ -231,7 +128,7 @@ const Dashboard: React.FC = () => {
                 Risk Band
               </p>
               <p style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: riskColors.text }}>
-                {latest.risk}
+                {latestSession?.risk_band || '-'}
               </p>
             </div>
           </div>
@@ -239,7 +136,7 @@ const Dashboard: React.FC = () => {
           {/* Trend */}
           <div
             style={{
-              backgroundColor: trend === 'Menurun' ? '#fee2e2' : '#dcfce7',
+              backgroundColor: trend === 'Menurun' ? '#fee2e2' : (trend === 'Meningkat' ? '#dcfce7' : '#f3f4f6'),
               borderRadius: '0.75rem',
               padding: '1rem 1.25rem',
               display: 'flex',
@@ -248,7 +145,7 @@ const Dashboard: React.FC = () => {
             }}
           >
             <div style={{ color: trendColor }}>
-              {trend === 'Menurun' ? <MdTrendingDown size={32} /> : <MdTrendingUp size={32} />}
+              <TrendIcon size={32} />
             </div>
             <div>
               <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>Tren</p>
@@ -285,10 +182,12 @@ const Dashboard: React.FC = () => {
               gap: '0.75rem',
             }}
           >
-            <MdPerson size={28} color="#1e40af" />
+            <MdCalendarToday size={28} color="#1e40af" />
             <div>
               <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>Sesi Terakhir</p>
-              <p style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#1e40af' }}>8 Januari 2025</p>
+              <p style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#1e40af' }}>
+                {latestSession ? new Date(latestSession.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) : '-'}
+              </p>
             </div>
           </div>
 
@@ -306,7 +205,9 @@ const Dashboard: React.FC = () => {
             <MdEmojiEvents size={28} color="#92400e" />
             <div>
               <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>Jumlah Sesi</p>
-              <p style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#92400e' }}>24</p>
+              <p style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#92400e' }}>
+                {sessions.length}
+              </p>
             </div>
           </div>
         </aside>
@@ -320,35 +221,56 @@ const Dashboard: React.FC = () => {
               borderRadius: '0.75rem',
               padding: '1.5rem',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              height: '400px',
+              display: 'flex',
+              flexDirection: 'column'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1f2937', fontWeight: 600 }}>
-                Tren Skor Kognitif
+                Tren Skor Kognitif (Overall)
               </h3>
-              <button
-                style={{
-                  backgroundColor: '#fef3c7',
-                  color: '#92400e',
-                  border: 'none',
-                  padding: '0.5rem 1rem',
-                  borderRadius: '0.5rem',
-                  fontSize: '0.85rem',
-                  fontWeight: 500,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                }}
-              >
-                <MdWarning size={18} /> Tren Menurun
-              </button>
+              {trend === 'Menurun' && (
+                <button
+                  style={{
+                    backgroundColor: '#fef3c7',
+                    color: '#92400e',
+                    border: 'none',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '0.5rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <MdWarning size={18} /> Tren Menurun
+                </button>
+              )}
             </div>
-            <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.9rem', color: '#6b7280' }}>
-              Perkembangan skor dari 5 sesi terakhir
-            </p>
-            <div style={{ height: '300px' }}>
-              <Line data={chartData} options={chartOptions} />
-            </div>
+
+            {sessions.length > 0 ? (
+              <div style={{ flex: 1, position: 'relative' }}>
+                <TrendChart
+                  dates={trendData.map(d => d.date)}
+                  scores={trendData.map(d => d.overall)}
+                  label="Overall Score"
+                />
+              </div>
+            ) : (
+              <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#6b7280',
+                backgroundColor: '#f9fafb',
+                borderRadius: '0.5rem',
+              }}>
+                Belum ada data sesi untuk ditampilkan.
+              </div>
+            )}
           </div>
 
           {/* Metrics Cards */}
@@ -365,14 +287,11 @@ const Dashboard: React.FC = () => {
                 <div>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280' }}>Speech Fluency</p>
                   <p style={{ margin: '0.5rem 0 0 0', fontSize: '1.75rem', fontWeight: 700, color: '#2563eb' }}>
-                    {latest.speech_fluency}
+                    {Math.round(latestScores.speech_fluency)}
                   </p>
                 </div>
-                <MdTrendingDown size={24} color="#ef4444" />
+                <MetricTrendIcon metric="speech_fluency" />
               </div>
-              <p style={{ margin: '0.75rem 0 0 0', fontSize: '0.8rem', color: '#ef4444', fontWeight: 500 }}>
-                -10 poin (72 → 62)
-              </p>
             </div>
 
             <div
@@ -387,14 +306,11 @@ const Dashboard: React.FC = () => {
                 <div>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280' }}>Lexical Score</p>
                   <p style={{ margin: '0.5rem 0 0 0', fontSize: '1.75rem', fontWeight: 700, color: '#06b6d4' }}>
-                    {latest.lexical}
+                    {Math.round(latestScores.lexical_score)}
                   </p>
                 </div>
-                <MdTrendingDown size={24} color="#ef4444" />
+                <MetricTrendIcon metric="lexical_score" />
               </div>
-              <p style={{ margin: '0.75rem 0 0 0', fontSize: '0.8rem', color: '#ef4444', fontWeight: 500 }}>
-                -10 poin (68 → 58)
-              </p>
             </div>
 
             <div
@@ -409,14 +325,11 @@ const Dashboard: React.FC = () => {
                 <div>
                   <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280' }}>Coherence</p>
                   <p style={{ margin: '0.5rem 0 0 0', fontSize: '1.75rem', fontWeight: 700, color: '#10b981' }}>
-                    {latest.coherence}
+                    {Math.round(latestScores.coherence_score)}
                   </p>
                 </div>
-                <MdTrendingDown size={24} color="#ef4444" />
+                <MetricTrendIcon metric="coherence_score" />
               </div>
-              <p style={{ margin: '0.75rem 0 0 0', fontSize: '0.8rem', color: '#ef4444', fontWeight: 500 }}>
-                -10 poin (70 → 60)
-              </p>
             </div>
           </div>
 

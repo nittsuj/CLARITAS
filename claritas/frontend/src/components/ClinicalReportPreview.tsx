@@ -1,15 +1,68 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { MdPrint, MdDownload } from 'react-icons/md';
+import { getSessions, calculateOverallScore, getLatestScores, type SessionResult } from '../utils/sessions';
+import TrendChart from './TrendChart';
 
 const ClinicalReportPreview: React.FC = () => {
+    const [sessions, setSessions] = useState<SessionResult[]>([]);
+    const [user, setUser] = useState<any>(null);
+
+    useEffect(() => {
+        setSessions(getSessions());
+        const storedUser = localStorage.getItem('claritas_current_user');
+        if (storedUser) {
+            setUser(JSON.parse(storedUser));
+        }
+    }, []);
+
     const handlePrint = () => {
         window.print();
     };
 
     const handleDownload = () => {
-        // TODO: Implement PDF generation
         alert('Fitur Download PDF akan segera hadir!');
     };
+
+    // Calculate metrics
+    const overallScore = calculateOverallScore(sessions);
+    const latestScores = getLatestScores(sessions);
+
+    // Calculate trends (vs previous session)
+    const getPercentageChange = (metric: 'speech_fluency' | 'lexical_score' | 'coherence_score') => {
+        if (sessions.length < 2) return 0;
+        const current = sessions[sessions.length - 1].scores[metric];
+        const previous = sessions[sessions.length - 2].scores[metric];
+        return Math.round(((current - previous) / previous) * 100);
+    };
+
+    const fluencyChange = getPercentageChange('speech_fluency');
+    const lexicalChange = getPercentageChange('lexical_score');
+    const coherenceChange = getPercentageChange('coherence_score');
+
+    const getRiskLabel = (score: number) => {
+        if (score >= 80) return { label: 'Low Risk', color: '#10b981' }; // Green
+        if (score >= 60) return { label: 'Medium Risk', color: '#f59e0b' }; // Orange
+        return { label: 'High Risk', color: '#ef4444' }; // Red
+    };
+
+    // Format Date
+    const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // Trend Data for Chart
+    const trendData = sessions.map(s => ({
+        date: new Date(s.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }),
+        score: Math.round((s.scores.speech_fluency + s.scores.lexical_score + s.scores.coherence_score) / 3)
+    }));
+
+    // Empty state if no sessions
+    if (sessions.length === 0) {
+        return (
+            <div style={{ maxWidth: '900px', margin: '0 auto', padding: '4rem 2rem', textAlign: 'center' }}>
+                <h2 style={{ color: '#6b7280' }}>Belum ada data laporan tersedia.</h2>
+                <p>Silakan lakukan asesmen di CogniView untuk menghasilkan laporan klinis.</p>
+            </div>
+        );
+    }
 
     return (
         <div style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem', backgroundColor: '#ffffff' }}>
@@ -46,7 +99,7 @@ const ClinicalReportPreview: React.FC = () => {
                             Cognitive Insight Audio Recognition and Identification Technology for Alzheimer Support
                         </div>
                         <div style={{ fontSize: '0.875rem', color: '#111827', fontWeight: 600, marginTop: '0.25rem' }}>
-                            Tanggal Laporan: <span style={{ fontWeight: 400 }}>8 Januari 2026</span>
+                            Tanggal Laporan: <span style={{ fontWeight: 400 }}>{today}</span>
                         </div>
                     </div>
                 </div>
@@ -130,12 +183,12 @@ const ClinicalReportPreview: React.FC = () => {
                         <div style={{ fontSize: '0.95rem', color: '#111827', fontWeight: 600 }}>68 years</div>
                     </div>
                     <div>
-                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>Periode Asesmen</div>
-                        <div style={{ fontSize: '0.95rem', color: '#111827', fontWeight: 600 }}>7 Bulan Terakhir</div>
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>Caregiver</div>
+                        <div style={{ fontSize: '0.95rem', color: '#111827', fontWeight: 600 }}>{user?.name || '-'}</div>
                     </div>
                     <div>
                         <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>Total Sesi</div>
-                        <div style={{ fontSize: '0.95rem', color: '#111827', fontWeight: 600 }}>24 Sesi</div>
+                        <div style={{ fontSize: '0.95rem', color: '#111827', fontWeight: 600 }}>{sessions.length} Sesi</div>
                     </div>
                 </div>
             </div>
@@ -154,10 +207,10 @@ const ClinicalReportPreview: React.FC = () => {
                     NILAI KOGNITIF KESELURUHAN
                 </h2>
                 <div style={{ fontSize: '4rem', fontWeight: 700, color: '#2563eb', lineHeight: 1 }}>
-                    73<span style={{ fontSize: '2rem', color: '#6b7280' }}>/100</span>
+                    {overallScore}<span style={{ fontSize: '2rem', color: '#6b7280' }}>/100</span>
                 </div>
                 <div style={{ fontSize: '0.95rem', color: '#1e3a8a', fontWeight: 600, marginTop: '0.5rem' }}>
-                    Good Progress - Above Average
+                    {overallScore >= 80 ? 'Good Progress - Stable Condition' : (overallScore >= 60 ? 'Moderate Condition - Needs Attention' : 'Critical Condition - Requires Medical Consultation')}
                 </div>
             </div>
 
@@ -171,33 +224,18 @@ const ClinicalReportPreview: React.FC = () => {
                     <div style={{ border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                             <div style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 600 }}>Speech Fluency</div>
-                            <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>+8%</div>
+                            <div style={{ fontSize: '0.75rem', color: fluencyChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 600 }}>
+                                {fluencyChange > 0 ? '+' : ''}{fluencyChange}%
+                            </div>
                         </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111827', marginBottom: '0.5rem' }}>64</div>
-                        <div
-                            style={{
-                                width: '100%',
-                                height: '6px',
-                                backgroundColor: '#e5e7eb',
-                                borderRadius: '3px',
-                                overflow: 'hidden',
-                                marginBottom: '0.75rem',
-                            }}
-                        >
-                            <div style={{ width: '64%', height: '100%', backgroundColor: '#f59e0b', borderRadius: '3px' }} />
+                        <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111827', marginBottom: '0.5rem' }}>
+                            {Math.round(latestScores.speech_fluency)}
                         </div>
-                        <div
-                            style={{
-                                fontSize: '0.75rem',
-                                color: '#ffffff',
-                                backgroundColor: '#f59e0b',
-                                padding: '0.25rem 0.5rem',
-                                borderRadius: '0.25rem',
-                                display: 'inline-block',
-                                marginBottom: '0.5rem',
-                            }}
-                        >
-                            Medium Risk
+                        <div style={{ width: '100%', height: '6px', backgroundColor: '#e5e7eb', borderRadius: '3px', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                            <div style={{ width: `${latestScores.speech_fluency}%`, height: '100%', backgroundColor: getRiskLabel(latestScores.speech_fluency).color, borderRadius: '3px' }} />
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#ffffff', backgroundColor: getRiskLabel(latestScores.speech_fluency).color, padding: '0.25rem 0.5rem', borderRadius: '0.25rem', display: 'inline-block', marginBottom: '0.5rem' }}>
+                            {getRiskLabel(latestScores.speech_fluency).label}
                         </div>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.5 }}>
                             Pasien menunjukkan tempo bicara yang cukup baik dengan beberapa jeda pendek yang menandakan proses berpikir.
@@ -208,33 +246,18 @@ const ClinicalReportPreview: React.FC = () => {
                     <div style={{ border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                             <div style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 600 }}>Lexical</div>
-                            <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>+9%</div>
+                            <div style={{ fontSize: '0.75rem', color: lexicalChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 600 }}>
+                                {lexicalChange > 0 ? '+' : ''}{lexicalChange}%
+                            </div>
                         </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111827', marginBottom: '0.5rem' }}>91</div>
-                        <div
-                            style={{
-                                width: '100%',
-                                height: '6px',
-                                backgroundColor: '#e5e7eb',
-                                borderRadius: '3px',
-                                overflow: 'hidden',
-                                marginBottom: '0.75rem',
-                            }}
-                        >
-                            <div style={{ width: '91%', height: '100%', backgroundColor: '#10b981', borderRadius: '3px' }} />
+                        <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111827', marginBottom: '0.5rem' }}>
+                            {Math.round(latestScores.lexical_score)}
                         </div>
-                        <div
-                            style={{
-                                fontSize: '0.75rem',
-                                color: '#ffffff',
-                                backgroundColor: '#10b981',
-                                padding: '0.25rem 0.5rem',
-                                borderRadius: '0.25rem',
-                                display: 'inline-block',
-                                marginBottom: '0.5rem',
-                            }}
-                        >
-                            Low Risk
+                        <div style={{ width: '100%', height: '6px', backgroundColor: '#e5e7eb', borderRadius: '3px', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                            <div style={{ width: `${latestScores.lexical_score}%`, height: '100%', backgroundColor: getRiskLabel(latestScores.lexical_score).color, borderRadius: '3px' }} />
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#ffffff', backgroundColor: getRiskLabel(latestScores.lexical_score).color, padding: '0.25rem 0.5rem', borderRadius: '0.25rem', display: 'inline-block', marginBottom: '0.5rem' }}>
+                            {getRiskLabel(latestScores.lexical_score).label}
                         </div>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.5 }}>
                             Kosakata yang digunakan sangat baik dan bervariasi, menunjukkan kemampuan verbal yang kuat.
@@ -245,33 +268,18 @@ const ClinicalReportPreview: React.FC = () => {
                     <div style={{ border: '1px solid #e5e7eb', borderRadius: '0.5rem', padding: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                             <div style={{ fontSize: '0.875rem', color: '#6b7280', fontWeight: 600 }}>Coherence</div>
-                            <div style={{ fontSize: '0.75rem', color: '#10b981', fontWeight: 600 }}>+6%</div>
+                            <div style={{ fontSize: '0.75rem', color: coherenceChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 600 }}>
+                                {coherenceChange > 0 ? '+' : ''}{coherenceChange}%
+                            </div>
                         </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111827', marginBottom: '0.5rem' }}>60</div>
-                        <div
-                            style={{
-                                width: '100%',
-                                height: '6px',
-                                backgroundColor: '#e5e7eb',
-                                borderRadius: '3px',
-                                overflow: 'hidden',
-                                marginBottom: '0.75rem',
-                            }}
-                        >
-                            <div style={{ width: '60%', height: '100%', backgroundColor: '#ef4444', borderRadius: '3px' }} />
+                        <div style={{ fontSize: '2.5rem', fontWeight: 700, color: '#111827', marginBottom: '0.5rem' }}>
+                            {Math.round(latestScores.coherence_score)}
                         </div>
-                        <div
-                            style={{
-                                fontSize: '0.75rem',
-                                color: '#ffffff',
-                                backgroundColor: '#ef4444',
-                                padding: '0.25rem 0.5rem',
-                                borderRadius: '0.25rem',
-                                display: 'inline-block',
-                                marginBottom: '0.5rem',
-                            }}
-                        >
-                            High Risk
+                        <div style={{ width: '100%', height: '6px', backgroundColor: '#e5e7eb', borderRadius: '3px', overflow: 'hidden', marginBottom: '0.75rem' }}>
+                            <div style={{ width: `${latestScores.coherence_score}%`, height: '100%', backgroundColor: getRiskLabel(latestScores.coherence_score).color, borderRadius: '3px' }} />
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#ffffff', backgroundColor: getRiskLabel(latestScores.coherence_score).color, padding: '0.25rem 0.5rem', borderRadius: '0.25rem', display: 'inline-block', marginBottom: '0.5rem' }}>
+                            {getRiskLabel(latestScores.coherence_score).label}
                         </div>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.5 }}>
                             Ada beberapa kesulitan dalam menjaga koherensi cerita, namun masih dapat dipahami secara keseluruhan.
@@ -292,14 +300,10 @@ const ClinicalReportPreview: React.FC = () => {
                         padding: '1.5rem',
                         backgroundColor: '#f9fafb',
                         textAlign: 'center',
+                        height: '300px'
                     }}
                 >
-                    <div style={{ color: '#6b7280', fontSize: '0.875rem' }}>
-                        [Chart placeholder - Trend line showing monthly progress]
-                    </div>
-                    <div style={{ marginTop: '1rem', fontSize: '0.75rem', color: '#6b7280' }}>
-                        Progress menunjukkan peningkatan bertahap dalam 3 bulan terakhir
-                    </div>
+                    <TrendChart dates={trendData.map(t => t.date)} scores={trendData.map(t => t.score)} label="Monthly Cognitive Score" />
                 </div>
             </div>
 
@@ -312,34 +316,37 @@ const ClinicalReportPreview: React.FC = () => {
                     <thead>
                         <tr style={{ backgroundColor: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
                             <th style={{ padding: '0.75rem', textAlign: 'left', fontWeight: 600, color: '#6b7280' }}>Tanggal</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#6b7280' }}>Skor</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#6b7280' }}>Akurasi</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#6b7280' }}>Durasi</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#6b7280' }}>Status rata-rata respons</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#6b7280' }}>Avg Score</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#6b7280' }}>Fluency</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#6b7280' }}>Lexical</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#6b7280' }}>Coherence</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 600, color: '#6b7280' }}>Risk Band</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.75rem' }}>2025-01-28</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', color: '#2563eb', fontWeight: 600 }}>75</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>85%</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>9:32</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>3.2s</td>
-                        </tr>
-                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.75rem' }}>2025-01-21</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', color: '#2563eb', fontWeight: 600 }}>72</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>78%</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>9:15</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>3.1s</td>
-                        </tr>
-                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.75rem' }}>2025-12-15</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', color: '#2563eb', fontWeight: 600 }}>78</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>78%</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>8:45</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>3.1s</td>
-                        </tr>
+                        {sessions.slice().reverse().slice(0, 5).map((session, index) => {
+                            const avg = Math.round((session.scores.speech_fluency + session.scores.lexical_score + session.scores.coherence_score) / 3);
+                            return (
+                                <tr key={session.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                    <td style={{ padding: '0.75rem' }}>{new Date(session.date).toLocaleDateString('id-ID')}</td>
+                                    <td style={{ padding: '0.75rem', textAlign: 'center', color: '#2563eb', fontWeight: 600 }}>{avg}</td>
+                                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Math.round(session.scores.speech_fluency)}</td>
+                                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Math.round(session.scores.lexical_score)}</td>
+                                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Math.round(session.scores.coherence_score)}</td>
+                                    <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                        <span style={{
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: '9999px',
+                                            fontSize: '0.75rem',
+                                            backgroundColor: getRiskLabel(avg).color + '20',
+                                            color: getRiskLabel(avg).color
+                                        }}>
+                                            {session.risk_band}
+                                        </span>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
@@ -370,12 +377,8 @@ const ClinicalReportPreview: React.FC = () => {
                         mempertahankan kekayaan kosakata.
                     </li>
                     <li>
-                        Nilai kognitif 73/100 menunjukkan risiko sedang. Jadwalkan konsultasi neurologis dalam 3 bulan untuk
+                        Nilai kognitif {overallScore}/100 menunjukkan {overallScore >= 80 ? 'kondisi baik' : 'risiko sedang'}. Jadwalkan konsultasi neurologis dalam 3 bulan untuk
                         evaluasi mendalam.
-                    </li>
-                    <li>
-                        Caregiver disarankan untuk mencatat perubahan perilaku harian dan melaporkan ke klinisi pada kunjungan
-                        berikutnya.
                     </li>
                 </ul>
             </div>

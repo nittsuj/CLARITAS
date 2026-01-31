@@ -87,7 +87,7 @@ const CogniView: React.FC = () => {
 
   const isSentenceValid = () => {
     const lines = sentences.split('\n').filter(s => s.trim());
-    return lines.length >= 3;
+    return lines.length >= 1;
   };
 
   const handleStartSession = () => {
@@ -502,7 +502,7 @@ const CogniView: React.FC = () => {
               <textarea
                 value={sentences}
                 onChange={(e) => handleSentenceChange(e.target.value)}
-                placeholder="Masukkan kalimat untuk dibaca pasien (minimal 3 kalimat, pisahkan dengan Enter)"
+                placeholder="Masukkan kalimat untuk dibaca pasien (minimal 1 kalimat, pisahkan dengan Enter)"
                 style={{
                   width: '100%',
                   minHeight: '150px',
@@ -527,13 +527,13 @@ const CogniView: React.FC = () => {
                 </h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {sentenceList.length >= 3 ? (
+                    {sentenceList.length >= 1 ? (
                       <MdCheckCircle size={20} color="#10b981" />
                     ) : (
                       <MdCancel size={20} color="#ef4444" />
                     )}
                     <span style={{ fontSize: '0.85rem', color: '#374151' }}>
-                      Min. 3 kalimat (saat ini: {sentenceList.length})
+                      Min. 1 kalimat (saat ini: {sentenceList.length})
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
