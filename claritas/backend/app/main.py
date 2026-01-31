@@ -25,13 +25,13 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional
 import traceback
 
-claritas_model = None
-whisper_model = None
-
 from .utils import save_upload_to_temp, convert_audio_to_wav, detect_audio_format
 
 from .db import Base, engine, SessionLocal, get_db
 from .models import User, Session as SessionModel
+
+claritas_model = None
+whisper_model = None
 
 Base.metadata.create_all(bind=engine)
 
@@ -78,6 +78,7 @@ async def load_model():
     Load ClaritasModel once at server startup.
     This prevents reloading heavy models (2GB+) on every request.
     """
+    global claritas_model, whisper_model
     
     print("\n" + "="*60)
     print("🚀 CLARITAS BACKEND STARTUP")
