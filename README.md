@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-# clairo
-hak milik tembok ratapan solo
-=======
 # ﻿CLARITAS
 
 **Cognitive Linguistic Audio Recognition and Identification Technology for Alzheimer Support**
