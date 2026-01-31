@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Add parent directory to path to import from ../ai
 ROOT = Path(__file__).resolve()
-while ROOT.name != "clairo" and ROOT.parent != ROOT:
+while ROOT.name != "CLARITAS" and ROOT.parent != ROOT:
     ROOT = ROOT.parent
 sys.path.insert(0, str(ROOT))
 
@@ -17,13 +17,32 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header
+from sqlalchemy.orm import Session as OrmSession
+import json
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
 import traceback
 
 from .utils import save_upload_to_temp, convert_audio_to_wav, detect_audio_format
+
+from .db import Base, engine, SessionLocal, get_db
+from .models import User, Session as SessionModel
+
+Base.metadata.create_all(bind=engine)
+
+def get_or_create_user(db: OrmSession, email: str) -> User:
+    user = db.query(User).filter(User.email == email).first()
+    if user:
+        return user
+
+    user = User(email=email)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
 
 # Global model instance (loaded once at startup)
 claritas_model = None
@@ -95,9 +114,12 @@ async def root():
         "model_status": model_status
     }
 
-
 @app.post("/analyze-audio", response_model=AnalysisResult)
-async def analyze_audio(file: UploadFile = File(...)) -> AnalysisResult:
+async def analyze_audio(
+    file: UploadFile = File(...),
+    x_user_email: str = Header(..., alias="X-User-Email"),
+    db: OrmSession = Depends(get_db),
+) -> AnalysisResult:
     """
     Accept an audio recording and return cognitive health analysis.
     
@@ -182,8 +204,28 @@ async def analyze_audio(file: UploadFile = File(...)) -> AnalysisResult:
         
         # === Map AI results to response schema ===
         result = _format_response(ai_result, content)
-        
-        print(f"✅ Analysis complete: {result.risk_band}")
+
+        # 1) Get/Create user
+        user = get_or_create_user(db, x_user_email)
+
+        # 2) Insert session row
+        session_row = SessionModel(
+            user_id=user.id,
+            task_type=None,        # nanti kita isi dari FE
+            duration_sec=None,     # nanti kita isi dari FE
+            speech_fluency=result.speech_fluency,
+            lexical_score=result.lexical_score,
+            coherence_score=result.coherence_score,
+            risk_band=result.risk_band,
+            summary=result.summary,
+            technical_json=json.dumps(result.technical),
+        )
+
+        db.add(session_row)
+        db.commit()
+        db.refresh(session_row)
+
+        print(f"✅ Analysis complete: {result.risk_band} (session_id={session_row.id})")
         return result
         
     except HTTPException:
