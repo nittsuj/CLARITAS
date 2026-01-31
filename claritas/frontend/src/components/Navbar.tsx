@@ -81,7 +81,7 @@ const Navbar: React.FC = () => {
       }}
     >
       <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-        <img src={logoImage} alt="Claritas" style={{ height: '40px' }} />
+        <img src={logoImage} alt="Claritas" style={{ height: '56px' }} />
       </Link>
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
         <a href="#fitur" style={{ color: '#374151', fontWeight: 500, textDecoration: 'none' }}>

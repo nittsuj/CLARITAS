@@ -44,8 +44,8 @@ const AuthenticatedNav: React.FC = () => {
             }}
         >
             <div style={{ display: 'flex', gap: '3rem', alignItems: 'center' }}>
-                <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center' }}>
-                    <img src={logoImage} alt="Claritas" style={{ height: '40px' }} />
+                <Link to="/" style={{ display: 'flex', alignItems: 'center' }}>
+                    <img src={logoImage} alt="Claritas" style={{ height: '56px' }} />
                 </Link>
 
                 <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
