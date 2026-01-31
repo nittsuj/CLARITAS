@@ -25,6 +25,9 @@ from pydantic import BaseModel
 from typing import Dict, Any, Optional
 import traceback
 
+claritas_model = None
+whisper_model = None
+
 from .utils import save_upload_to_temp, convert_audio_to_wav, detect_audio_format
 
 from .db import Base, engine, SessionLocal, get_db
@@ -43,9 +46,6 @@ def get_or_create_user(db: OrmSession, email: str) -> User:
     db.refresh(user)
     return user
 
-
-# Global model instance (loaded once at startup)
-claritas_model = None
 
 app = FastAPI(
     title="Claritas Backend API",
@@ -78,7 +78,6 @@ async def load_model():
     Load ClaritasModel once at server startup.
     This prevents reloading heavy models (2GB+) on every request.
     """
-    global claritas_model
     
     print("\n" + "="*60)
     print("🚀 CLARITAS BACKEND STARTUP")
@@ -87,10 +86,14 @@ async def load_model():
     try:
         # Import here to catch import errors gracefully
         from ai import ClaritasModel
+        import whisper
         
         print("📦 Loading ClaritasModel (this may take 10-30 seconds)...")
         claritas_model = ClaritasModel()
         
+        print("📦 Loading WhisperModel (this may take 10-30 seconds)...")
+        whisper_model = whisper.load_model("base")
+
         print("✅ Model loaded successfully!")
         print("="*60 + "\n")
         
@@ -108,10 +111,12 @@ async def load_model():
 async def root():
     """Health check endpoint"""
     model_status = "loaded" if claritas_model is not None else "not loaded"
+    whisper_status = "loaded" if whisper_model is not None else "not loaded"
     return {
         "service": "Claritas Backend API",
         "status": "running",
-        "model_status": model_status
+        "model_status": model_status,
+        "whisper_status": whisper_status,
     }
 
 @app.post("/analyze-audio", response_model=AnalysisResult)
@@ -136,11 +141,12 @@ async def analyze_audio(
     if not file:
         raise HTTPException(status_code=400, detail="No file uploaded")
     
-    if claritas_model is None:
+    if claritas_model is None or whisper_model is None:
         raise HTTPException(
             status_code=503,
-            detail="AI model not loaded. Check server startup logs."
+            detail="AI models not loaded. Check server startup logs."
         )
+
     
     # === Read uploaded file ===
     try:
@@ -190,17 +196,23 @@ async def analyze_audio(
         print(f"🤖 Running ClaritasModel.predict()...")
         
         try:
-            # Note: text is optional. For hackathon, we don't have transcription yet.
-            # The model will still work with audio-only features.
+
+            # Transcribe audio to text
+            transcription = whisper_model.transcribe(audio_path_for_model)
+            pure_text = transcription.get("text", "").strip()
+
+            # Run Claritas prediction
             ai_result = claritas_model.predict(
                 audio_path=audio_path_for_model,
-                text=None  # TODO: Add speech-to-text transcription in future
+                text=pure_text
             )
+
         except Exception as e:
             raise HTTPException(
                 status_code=500,
                 detail=f"AI model prediction failed: {str(e)}"
             )
+
         
         # === Map AI results to response schema ===
         result = _format_response(ai_result, content)
