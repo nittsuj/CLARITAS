@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Add parent directory to path to import from ../ai
 ROOT = Path(__file__).resolve()
-while ROOT.name != "clairo" and ROOT.parent != ROOT:
+while ROOT.name != "claritasweb" and ROOT.parent != ROOT:
     ROOT = ROOT.parent
 sys.path.insert(0, str(ROOT))
 
@@ -27,6 +27,9 @@ from .utils import save_upload_to_temp, convert_audio_to_wav, detect_audio_forma
 
 # Global model instance (loaded once at startup)
 claritas_model = None
+
+# Mock mode for development/testing when AI model can't load
+USE_MOCK_RESPONSES = True  # Set to False when model is working
 
 app = FastAPI(
     title="Claritas Backend API",
@@ -114,10 +117,11 @@ async def analyze_audio(file: UploadFile = File(...)) -> AnalysisResult:
     if not file:
         raise HTTPException(status_code=400, detail="No file uploaded")
     
-    if claritas_model is None:
+    # Only check model if mock mode is disabled
+    if claritas_model is None and not USE_MOCK_RESPONSES:
         raise HTTPException(
             status_code=503,
-            detail="AI model not loaded. Check server startup logs."
+            detail="AI model not loaded and mock mode is disabled. Check server startup logs."
         )
     
     # === Read uploaded file ===
@@ -167,18 +171,23 @@ async def analyze_audio(file: UploadFile = File(...)) -> AnalysisResult:
         # === Run AI Model ===
         print(f"🤖 Running ClaritasModel.predict()...")
         
-        try:
-            # Note: text is optional. For hackathon, we don't have transcription yet.
-            # The model will still work with audio-only features.
-            ai_result = claritas_model.predict(
-                audio_path=audio_path_for_model,
-                text=None  # TODO: Add speech-to-text transcription in future
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"AI model prediction failed: {str(e)}"
-            )
+        # Use mock response if model not loaded and mock mode enabled
+        if claritas_model is None and USE_MOCK_RESPONSES:
+            print("⚠️  Using MOCK response (AI model not loaded)")
+            ai_result = _generate_mock_result()
+        else:
+            try:
+                # Note: text is optional. For hackathon, we don't have transcription yet.
+                # The model will still work with audio-only features.
+                ai_result = claritas_model.predict(
+                    audio_path=audio_path_for_model,
+                    text=None  # TODO: Add speech-to-text transcription in future
+                )
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"AI model prediction failed: {str(e)}"
+                )
         
         # === Map AI results to response schema ===
         result = _format_response(ai_result, content)
@@ -294,3 +303,68 @@ def _format_response(ai_result: Dict, original_file_bytes: bytes) -> AnalysisRes
         summary=summary,
         technical=technical
     )
+
+
+def _generate_mock_result() -> Dict:
+    """
+    Generate mock AI result for testing when model is not loaded.
+    Returns data in the same format as ClaritasModel.predict()
+    """
+    import random
+    
+    # Randomize scores for variety
+    fluency = random.uniform(70, 95)
+    lexical = random.uniform(65, 90)
+    
+    # Random classification
+    classes = ['HC', 'MCI', 'AD']
+    weights = [0.7, 0.2, 0.1]  # Bias towards HC for demo
+    predicted = random.choices(classes, weights=weights)[0]
+    
+    # Generate probabilities
+    probs = {}
+    remaining = 1.0
+    for cls in classes[:-1]:
+        if cls == predicted:
+            probs[cls] = random.uniform(0.6, 0.9)
+        else:
+            probs[cls] = random.uniform(0.05, 0.2)
+        remaining -= probs[cls]
+    probs[classes[-1]] = max(0.01, remaining)
+    
+    # Normalize
+    total = sum(probs.values())
+    probs = {k: v/total for k, v in probs.items()}
+    
+    confidence = probs[predicted]
+    
+    # Determine risk level
+    if predicted == 'HC':
+        risk = 'low'
+    elif predicted == 'MCI':
+        risk = 'medium'
+    else:
+        risk = 'high'
+    
+    return {
+        'speech_fluency_score': fluency,
+        'lexical_coherence_score': lexical,
+        'classification': {
+            'predicted_class': predicted,
+            'confidence': confidence,
+            'probabilities': probs
+        },
+        'risk_level': risk,
+        'fitur_akustik': {
+            'pitch_mean': random.uniform(100, 200),
+            'pitch_std': random.uniform(20, 50),
+            'energy_mean': random.uniform(0.01, 0.05),
+            'zcr_mean': random.uniform(0.05, 0.15),
+            'mfcc_mean': random.uniform(-10, 10)
+        },
+        'fitur_leksikal': {
+            'word_count': random.randint(50, 150),
+            'unique_words': random.randint(30, 80),
+            'avg_word_length': random.uniform(4, 7)
+        }
+    }

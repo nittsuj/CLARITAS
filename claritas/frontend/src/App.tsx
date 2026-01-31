@@ -5,6 +5,7 @@ import { GOOGLE_CLIENT_ID } from './config/google-oauth';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import CogniView from './pages/CogniView';
+import CareView from './pages/CareView';
 import SessionResult from './pages/SessionResult';
 
 const App: React.FC = () => {
@@ -14,6 +15,7 @@ const App: React.FC = () => {
         <Route path="/" element={<Landing />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/cogniview" element={<CogniView />} />
+        <Route path="/careview" element={<CareView />} />
         <Route path="/result" element={<SessionResult />} />
       </Routes>
     </GoogleOAuthProvider>
