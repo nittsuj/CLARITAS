@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MdImage, MdTextFields, MdMic, MdStop, MdCheckCircle, MdCancel } from 'react-icons/md';
 import AuthenticatedNav from '../components/AuthenticatedNav';
+import { analyzeAudio, type AnalysisResult } from '../utils/api';
 
 type Step = 'intro' | 'task-selection' | 'image-gallery' | 'sentence-input' | 'recording' | 'analyzing';
 type TaskType = 'deskripsi-gambar' | 'baca-kalimat' | null;
@@ -16,9 +17,13 @@ const CogniView: React.FC = () => {
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timerIntervalRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
 
   // Sample images
   const images = [
@@ -96,14 +101,22 @@ const CogniView: React.FC = () => {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      streamRef.current = stream;
+
+      const preferredMimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+      ];
+      const mimeType =
+        preferredMimeTypes.find((t) => MediaRecorder.isTypeSupported(t)) || '';
+
+      const mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
-        }
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
       mediaRecorder.start();
@@ -115,23 +128,57 @@ const CogniView: React.FC = () => {
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
 
-      mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+  const stopRecording = () => {
+    if (!mediaRecorderRef.current || !isRecording) return;
+
+    const mr = mediaRecorderRef.current;
+
+    // Move UI to analyzing immediately
+    setIsRecording(false);
+    setStep('analyzing');
+    setAnalysisError(null);
+
+    // IMPORTANT: set onstop BEFORE calling stop()
+    mr.onstop = async () => {
+      try {
+        // stop mic tracks so mic turns off
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((t) => t.stop());
+          streamRef.current = null;
+        }
+
+        const mime = mr.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mime });
+
         console.log('Recording stopped, audio blob created:', audioBlob);
-        // Navigate to analyzing screen
-        setStep('analyzing');
-        // Simulate analysis
+
+        if (audioBlob.size < 1000) {
+          throw new Error('Audio terlalu kecil. Coba rekam lebih lama.');
+        }
+
+        const result = await analyzeAudio(audioBlob);
+        console.log('Analysis result:', result);
+
+        setAnalysisResult(result);
+
         setTimeout(() => {
-          navigate('/dashboard');
+          navigate('/result', { state: { result } })
+        }, 300);
+      } catch (error) {
+        console.error('Analysis failed:', error);
+        setAnalysisError(error instanceof Error ? error.message : 'Unknown error occurred');
+
+        setTimeout(() => {
+          setStep('recording');
+          setAnalysisError(null);
         }, 3000);
-      };
-    }
+      }
+    };
+
+    mr.stop();
   };
+
 
   const handleSelesaikan = () => {
     if (isRecording) {
@@ -140,12 +187,17 @@ const CogniView: React.FC = () => {
   };
 
   const handleStopRekam = () => {
-    if (isRecording) {
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
-        setIsRecording(false);
-      }
+    if (isRecording && mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
     }
+    setIsRecording(false);
+
+    // stop mic tracks
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+
     // Reset to intro
     setStep('intro');
     setTaskType(null);
@@ -155,6 +207,7 @@ const CogniView: React.FC = () => {
     setCurrentSentenceIndex(0);
     setRecordingTime(0);
   };
+
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -703,21 +756,49 @@ const CogniView: React.FC = () => {
             justifyContent: 'center',
             minHeight: '60vh',
           }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              border: '6px solid #e5e7eb',
-              borderTop: '6px solid #2563eb',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              marginBottom: '2rem',
-            }} />
-            <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem', color: '#1f2937', fontWeight: 700 }}>
-              Menganalisis Audio
-            </h2>
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.95rem' }}>
-              Mohon tunggu, sedang memproses rekaman audio Anda...
-            </p>
+            {analysisError ? (
+              <>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  backgroundColor: '#fee2e2',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '2rem',
+                }}>
+                  <MdCancel size={48} color="#ef4444" />
+                </div>
+                <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem', color: '#dc2626', fontWeight: 700 }}>
+                  Analisis Gagal
+                </h2>
+                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.95rem', textAlign: 'center', maxWidth: '500px' }}>
+                  {analysisError}
+                </p>
+                <p style={{ margin: '1rem 0 0 0', color: '#9ca3af', fontSize: '0.85rem' }}>
+                  Kembali ke sesi rekaman dalam beberapa detik...
+                </p>
+              </>
+            ) : (
+              <>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  border: '6px solid #e5e7eb',
+                  borderTop: '6px solid #2563eb',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                  marginBottom: '2rem',
+                }} />
+                <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem', color: '#1f2937', fontWeight: 700 }}>
+                  Menganalisis Audio
+                </h2>
+                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.95rem' }}>
+                  Mohon tunggu, sedang memproses rekaman audio Anda...
+                </p>
+              </>
+            )}
           </div>
         )}
       </main>
