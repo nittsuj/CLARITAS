@@ -16,6 +16,7 @@ const App: React.FC = () => {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/cogniview" element={<CogniView />} />
         <Route path="/careview" element={<CareView />} />
+        <Route path="/session-result/:sessionId" element={<SessionResult />} />
         <Route path="/result" element={<SessionResult />} />
       </Routes>
     </GoogleOAuthProvider>

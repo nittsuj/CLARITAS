@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MdTrendingUp, MdTrendingDown, MdRemove, MdDownload } from 'react-icons/md';
 import AuthenticatedNav from '../components/AuthenticatedNav';
+import ClinicalReportPreview from '../components/ClinicalReportPreview';
 import {
     getSessions,
     calculateOverallScore,
@@ -52,6 +53,16 @@ const CareView: React.FC = () => {
         if (trend === 'down') return <MdTrendingDown style={{ color: '#ef4444', fontSize: '1.2rem' }} />;
         return <MdRemove style={{ color: '#6b7280', fontSize: '1.2rem' }} />;
     };
+
+    // Show Clinical Report if no sessions
+    if (sessions.length === 0) {
+        return (
+            <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+                <AuthenticatedNav />
+                <ClinicalReportPreview />
+            </div>
+        );
+    }
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -375,8 +386,7 @@ const CareView: React.FC = () => {
                                                         fontWeight: 600,
                                                     }}
                                                     onClick={() => {
-                                                        // TODO: Navigate to detail page
-                                                        alert(`Detail untuk session ${session.id}`);
+                                                        navigate(`/session-result/${session.id}`);
                                                     }}
                                                 >
                                                     Lihat Detail
