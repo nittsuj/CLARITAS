@@ -1,35 +1,14 @@
-# FastAPI Dependencies
+# FastAPI dependencies
 fastapi==0.110.0
 uvicorn==0.27.1
 python-multipart==0.0.20
-
-# Testing Dependencies
-pytest==8.0.0
-httpx==0.26.0
-pytest-asyncio==0.23.5
-
-# AI Model Dependencies (from ../ai/requirements.txt)
-# Deep Learning (Replaced by Gemini API)
-# torch==2.9.1  <-- Removed to fix WinError 126
-google-generativeai==0.3.2
 python-dotenv==1.0.1
 
-# Machine Learning
-catboost==1.2.8
-lightgbm==4.6.0
-scikit-learn==1.7.2
-xgboost==3.1.3
+# Audio processing
+imageio-ffmpeg==0.6.0
 
-# Audio Processing
-librosa==0.11.0
-soundfile==0.13.1
-webrtcvad-wheels==2.0.14
-audioread==3.1.0
-
-# Numerical & Scientific
-numpy==2.1.3
-scipy==1.15.3
-pandas==2.3.3
+# Google Gemini API
+google-generativeai==0.3.2
 
 # Utilities
-joblib==1.5.3
+httpx==0.26.0
