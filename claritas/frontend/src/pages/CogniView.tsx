@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MdImage, MdTextFields, MdMic, MdStop, MdCheckCircle, MdCancel } from 'react-icons/md';
 import AuthenticatedNav from '../components/AuthenticatedNav';
 import { analyzeAudio, type AnalysisResult } from '../utils/api';
+import { saveSession, type SessionResult } from '../utils/sessions';
 
 type Step = 'intro' | 'task-selection' | 'image-gallery' | 'sentence-input' | 'recording' | 'analyzing';
 type TaskType = 'deskripsi-gambar' | 'baca-kalimat' | null;
@@ -162,9 +163,31 @@ const CogniView: React.FC = () => {
 
         setAnalysisResult(result);
 
+        // Save session to localStorage
+        const user = JSON.parse(localStorage.getItem('claritas_current_user') || '{}');
+        const session: SessionResult = {
+          id: Date.now().toString(),
+          date: new Date().toISOString(),
+          taskType: taskType!,
+          caregiver: user.name || 'Unknown',
+          patient: 'Budi Santoso', // TODO: Get from patient selection
+          scores: {
+            speech_fluency: result.speech_fluency,
+            lexical_score: result.lexical_score,
+            coherence_score: result.coherence_score,
+          },
+          risk_band: result.risk_band,
+          summary: result.summary,
+          technical: result.technical,
+        };
+
+        saveSession(session);
+        console.log('Session saved:', session);
+
+        // Navigate to CareView
         setTimeout(() => {
-          navigate('/result', { state: { result } })
-        }, 300);
+          navigate('/careview');
+        }, 1000);
       } catch (error) {
         console.error('Analysis failed:', error);
         setAnalysisError(error instanceof Error ? error.message : 'Unknown error occurred');

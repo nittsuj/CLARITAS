@@ -9,7 +9,7 @@ from pathlib import Path
 
 # Add parent directory to path to import from ../ai
 ROOT = Path(__file__).resolve()
-while ROOT.name != "CLARITAS" and ROOT.parent != ROOT:
+while ROOT.name != "claritasweb" and ROOT.parent != ROOT:
     ROOT = ROOT.parent
 sys.path.insert(0, str(ROOT))
 
@@ -17,9 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Header
-from sqlalchemy.orm import Session as OrmSession
-import json
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
@@ -27,25 +25,11 @@ import traceback
 
 from .utils import save_upload_to_temp, convert_audio_to_wav, detect_audio_format
 
-from .db import Base, engine, SessionLocal, get_db
-from .models import User, Session as SessionModel
-
-Base.metadata.create_all(bind=engine)
-
-def get_or_create_user(db: OrmSession, email: str) -> User:
-    user = db.query(User).filter(User.email == email).first()
-    if user:
-        return user
-
-    user = User(email=email)
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
-
-
 # Global model instance (loaded once at startup)
 claritas_model = None
+
+# Mock mode for development/testing when AI model can't load
+USE_MOCK_RESPONSES = True  # Set to False when model is working
 
 app = FastAPI(
     title="Claritas Backend API",
@@ -114,12 +98,9 @@ async def root():
         "model_status": model_status
     }
 
+
 @app.post("/analyze-audio", response_model=AnalysisResult)
-async def analyze_audio(
-    file: UploadFile = File(...),
-    x_user_email: str = Header(..., alias="X-User-Email"),
-    db: OrmSession = Depends(get_db),
-) -> AnalysisResult:
+async def analyze_audio(file: UploadFile = File(...)) -> AnalysisResult:
     """
     Accept an audio recording and return cognitive health analysis.
     
@@ -136,10 +117,11 @@ async def analyze_audio(
     if not file:
         raise HTTPException(status_code=400, detail="No file uploaded")
     
-    if claritas_model is None:
+    # Only check model if mock mode is disabled
+    if claritas_model is None and not USE_MOCK_RESPONSES:
         raise HTTPException(
             status_code=503,
-            detail="AI model not loaded. Check server startup logs."
+            detail="AI model not loaded and mock mode is disabled. Check server startup logs."
         )
     
     # === Read uploaded file ===
@@ -189,43 +171,28 @@ async def analyze_audio(
         # === Run AI Model ===
         print(f"🤖 Running ClaritasModel.predict()...")
         
-        try:
-            # Note: text is optional. For hackathon, we don't have transcription yet.
-            # The model will still work with audio-only features.
-            ai_result = claritas_model.predict(
-                audio_path=audio_path_for_model,
-                text=None  # TODO: Add speech-to-text transcription in future
-            )
-        except Exception as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"AI model prediction failed: {str(e)}"
-            )
+        # Use mock response if model not loaded and mock mode enabled
+        if claritas_model is None and USE_MOCK_RESPONSES:
+            print("⚠️  Using MOCK response (AI model not loaded)")
+            ai_result = _generate_mock_result()
+        else:
+            try:
+                # Note: text is optional. For hackathon, we don't have transcription yet.
+                # The model will still work with audio-only features.
+                ai_result = claritas_model.predict(
+                    audio_path=audio_path_for_model,
+                    text=None  # TODO: Add speech-to-text transcription in future
+                )
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"AI model prediction failed: {str(e)}"
+                )
         
         # === Map AI results to response schema ===
         result = _format_response(ai_result, content)
-
-        # 1) Get/Create user
-        user = get_or_create_user(db, x_user_email)
-
-        # 2) Insert session row
-        session_row = SessionModel(
-            user_id=user.id,
-            task_type=None,        # nanti kita isi dari FE
-            duration_sec=None,     # nanti kita isi dari FE
-            speech_fluency=result.speech_fluency,
-            lexical_score=result.lexical_score,
-            coherence_score=result.coherence_score,
-            risk_band=result.risk_band,
-            summary=result.summary,
-            technical_json=json.dumps(result.technical),
-        )
-
-        db.add(session_row)
-        db.commit()
-        db.refresh(session_row)
-
-        print(f"✅ Analysis complete: {result.risk_band} (session_id={session_row.id})")
+        
+        print(f"✅ Analysis complete: {result.risk_band}")
         return result
         
     except HTTPException:
@@ -336,3 +303,68 @@ def _format_response(ai_result: Dict, original_file_bytes: bytes) -> AnalysisRes
         summary=summary,
         technical=technical
     )
+
+
+def _generate_mock_result() -> Dict:
+    """
+    Generate mock AI result for testing when model is not loaded.
+    Returns data in the same format as ClaritasModel.predict()
+    """
+    import random
+    
+    # Randomize scores for variety
+    fluency = random.uniform(70, 95)
+    lexical = random.uniform(65, 90)
+    
+    # Random classification
+    classes = ['HC', 'MCI', 'AD']
+    weights = [0.7, 0.2, 0.1]  # Bias towards HC for demo
+    predicted = random.choices(classes, weights=weights)[0]
+    
+    # Generate probabilities
+    probs = {}
+    remaining = 1.0
+    for cls in classes[:-1]:
+        if cls == predicted:
+            probs[cls] = random.uniform(0.6, 0.9)
+        else:
+            probs[cls] = random.uniform(0.05, 0.2)
+        remaining -= probs[cls]
+    probs[classes[-1]] = max(0.01, remaining)
+    
+    # Normalize
+    total = sum(probs.values())
+    probs = {k: v/total for k, v in probs.items()}
+    
+    confidence = probs[predicted]
+    
+    # Determine risk level
+    if predicted == 'HC':
+        risk = 'low'
+    elif predicted == 'MCI':
+        risk = 'medium'
+    else:
+        risk = 'high'
+    
+    return {
+        'speech_fluency_score': fluency,
+        'lexical_coherence_score': lexical,
+        'classification': {
+            'predicted_class': predicted,
+            'confidence': confidence,
+            'probabilities': probs
+        },
+        'risk_level': risk,
+        'fitur_akustik': {
+            'pitch_mean': random.uniform(100, 200),
+            'pitch_std': random.uniform(20, 50),
+            'energy_mean': random.uniform(0.01, 0.05),
+            'zcr_mean': random.uniform(0.05, 0.15),
+            'mfcc_mean': random.uniform(-10, 10)
+        },
+        'fitur_leksikal': {
+            'word_count': random.randint(50, 150),
+            'unique_words': random.randint(30, 80),
+            'avg_word_length': random.uniform(4, 7)
+        }
+    }
