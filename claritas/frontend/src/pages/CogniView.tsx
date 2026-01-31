@@ -184,9 +184,9 @@ const CogniView: React.FC = () => {
         saveSession(session);
         console.log('Session saved:', session);
 
-        // Navigate to CareView
+        // Navigate to Session Result page
         setTimeout(() => {
-          navigate('/careview');
+          navigate(`/session-result/${session.id}`, { state: { session } });
         }, 1000);
       } catch (error) {
         console.error('Analysis failed:', error);
