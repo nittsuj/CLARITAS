@@ -1,0 +1,6 @@
+{
+    "buildCommand": "cd claritas/frontend && npm run build",
+    "devCommand": "cd claritas/frontend && npm run dev",
+    "installCommand": "cd claritas/frontend && npm install",
+    "outputDirectory": "claritas/frontend/dist"
+}
