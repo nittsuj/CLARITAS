@@ -20,6 +20,9 @@ const CogniView: React.FC = () => {
   const audioChunks = useRef<Blob[]>([]);
   const [error, setError] = useState<string>('');
 
+  // ✅ ADDED: Upload file state
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
   const sentences = kalimat ? kalimat.split('\n').filter(s => s.trim()) : ['Hari ini cerah sekali'];
 
   const startRecording = async () => {
@@ -91,6 +94,39 @@ const CogniView: React.FC = () => {
       setStage('session');
     }
   };
+
+  // ✅ ADDED: Send uploaded file to backend
+  const sendFileToBackend = async (file: File) => {
+    setStage('loading');
+    setError('');
+
+    const formData = new FormData();
+    formData.append('file', file, file.name); // must match backend param name "file"
+
+    try {
+      const response = await fetch(`${API_URL}/analyze-audio`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        let msg = `Gagal menganalisis audio (${response.status})`;
+        try {
+          const errJson = await response.json();
+          if (errJson?.detail) msg = errJson.detail;
+        } catch { }
+        throw new Error(msg);
+      }
+
+      const result = await response.json();
+      navigate('/result', { state: { result } });
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message ?? 'Terjadi kesalahan saat mengirim audio ke server.');
+      setStage('session');
+    }
+  };
+
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
@@ -450,6 +486,70 @@ const CogniView: React.FC = () => {
                   ✓ Selanjutnya
                 </button>
               </div>
+
+              {/* ✅ ADDED UPLOAD FEATURE */}
+              <div style={{ marginTop: '1.25rem', borderTop: '1px solid #e5e7eb', paddingTop: '1.25rem' }}>
+                <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', color: '#374151', fontWeight: 600 }}>
+                  Atau upload file audio:
+                </p>
+
+                <input
+                  type="file"
+                  accept="audio/*"
+                  onChange={(e) => setUploadedFile(e.target.files?.[0] ?? null)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '2px dashed #e5e7eb',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#f9fafb',
+                    cursor: 'pointer',
+                  }}
+                />
+
+                {uploadedFile && (
+                  <div
+                    style={{
+                      marginTop: '0.75rem',
+                      backgroundColor: '#eff6ff',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '0.5rem',
+                      color: '#1e40af',
+                      fontSize: '0.85rem',
+                    }}
+                  >
+                    <div><b>File:</b> {uploadedFile.name}</div>
+                    <div><b>Ukuran:</b> {(uploadedFile.size / 1024).toFixed(1)} KB</div>
+                    <div><b>Tipe:</b> {uploadedFile.type || '(unknown)'}</div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => uploadedFile && sendFileToBackend(uploadedFile)}
+                  disabled={!uploadedFile || recording} // optional safety: avoid uploading while recording
+                  style={{
+                    marginTop: '0.9rem',
+                    width: '100%',
+                    backgroundColor: uploadedFile && !recording ? '#10b981' : '#9ca3af',
+                    color: '#ffffff',
+                    padding: '0.9rem',
+                    borderRadius: '0.5rem',
+                    border: 'none',
+                    fontWeight: 600,
+                    fontSize: '1rem',
+                    cursor: uploadedFile && !recording ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  ⬆ Upload & Analyze
+                </button>
+
+                {recording && (
+                  <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                    Stop rekam dulu sebelum upload file.
+                  </p>
+                )}
+              </div>
+
             </div>
           </div>
         )}
