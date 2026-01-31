@@ -84,35 +84,45 @@ async def load_model():
     print("🚀 CLARITAS BACKEND STARTUP")
     print("="*60)
     
+    
     try:
         # Import here to catch import errors gracefully
         from ai import ClaritasModel
-        import whisper
         
         print("📦 Loading ClaritasModel (this may take 10-30 seconds)...")
         claritas_model = ClaritasModel()
-        
-        print("📦 Loading WhisperModel (this may take 10-30 seconds)...")
-        whisper_model = whisper.load_model("base")
-
-        print("✅ Model loaded successfully!")
-        print("="*60 + "\n")
+        print("✅ ClaritasModel loaded successfully!")
         
     except Exception as e:
-        print(f"\n❌ FATAL ERROR: Failed to load AI model")
+        print(f"\n❌ FATAL ERROR: Failed to load ClaritasModel")
         print(f"Error: {e}")
-        print(f"\nTraceback:")
         traceback.print_exc()
-        print("\n" + "="*60)
+        claritas_model = None
+
+    # Load Whisper (optional - will use empty text if not available)
+    try:
+        import whisper
+        print("📦 Loading Whisper model (this may take 10-30 seconds)...")
+        whisper_model = whisper.load_model("base")
+        print("✅ Whisper loaded successfully!")
+    except Exception as e:
+        print(f"⚠️  Whisper not available: {e}")
+        print("    Audio analysis will work without transcription")
+        whisper_model = None
+
+    if claritas_model:
+        print("✅ Model loaded successfully!")
+    else:
         print("⚠️  Server will start but /analyze-audio will not work")
-        print("="*60 + "\n")
+    
+    print("="*60 + "\n")
 
 
 @app.get("/")
 async def root():
     """Health check endpoint"""
     model_status = "loaded" if claritas_model is not None else "not loaded"
-    whisper_status = "loaded" if whisper_model is not None else "not loaded"
+    whisper_status = "loaded" if whisper_model is not None else "not available (optional)"
     return {
         "service": "Claritas Backend API",
         "status": "running",
@@ -197,10 +207,21 @@ async def analyze_audio(
         print(f"🤖 Running ClaritasModel.predict()...")
         
         try:
-
-            # Transcribe audio to text
-            transcription = whisper_model.transcribe(audio_path_for_model)
-            pure_text = transcription.get("text", "").strip()
+            # Transcribe audio to text (if Whisper is available)
+            pure_text = ""  # Default to empty
+            
+            if whisper_model:
+                try:
+                    print("🎤 Transcribing audio with Whisper...")
+                    transcription = whisper_model.transcribe(audio_path_for_model)
+                    pure_text = transcription.get("text", "").strip()
+                    print(f"   Transcription: {pure_text[:100]}..." if len(pure_text) > 100 else f"   Transcription: {pure_text}")
+                except Exception as whisper_error:
+                    print(f"⚠️  Whisper transcription failed: {whisper_error}")
+                    print("   Continuing with audio-only analysis (empty text)")
+                    pure_text = ""
+            else:
+                print("⚠️  Whisper not available, using empty text (audio-only analysis)")
 
             # Run Claritas prediction
             ai_result = claritas_model.predict(
@@ -209,10 +230,13 @@ async def analyze_audio(
             )
 
         except Exception as e:
+            print("❌ ERROR inside predict/transcribe:")
+            traceback.print_exc()
             raise HTTPException(
                 status_code=500,
-                detail=f"AI model prediction failed: {str(e)}"
+                detail=f"AI model prediction failed: {repr(e)}"
             )
+
 
         
         # === Map AI results to response schema ===
